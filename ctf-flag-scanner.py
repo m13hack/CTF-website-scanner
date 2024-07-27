@@ -1,16 +1,31 @@
-import requests
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.common.by import By
+from selenium.webdriver.chrome.options import Options
 import re
+import time
 
 def scan_page(url, flag_pattern):
-    """Fetch the page content and search for flags using the provided pattern."""
+    """Fetch the fully rendered page source and search for flags using the provided pattern."""
+    # Setup Chrome options
+    chrome_options = Options()
+    chrome_options.add_argument("--headless")  # Run in headless mode (no GUI)
+    
+    # Specify the path to chromedriver
+    service = Service('/path/to/chromedriver')  # Update with your chromedriver path
+    driver = webdriver.Chrome(service=service, options=chrome_options)
+    
     try:
-        response = requests.get(url)
-        response.raise_for_status()  # Raise an exception for HTTP errors
-        flags = re.findall(flag_pattern, response.text)
-        return flags
-    except requests.RequestException as e:
+        driver.get(url)
+        time.sleep(5)  # Wait for JavaScript to load (adjust as needed)
+        page_source = driver.page_source  # Get the rendered page source
+        flags = re.findall(flag_pattern, page_source)
+        return flags, page_source
+    except Exception as e:
         print(f"Error fetching {url}: {e}")
-        return []
+        return [], ""
+    finally:
+        driver.quit()
 
 def scan_robots_txt(url, flag_pattern):
     """Fetch the robots.txt file and search for flags using the provided pattern."""
@@ -27,16 +42,20 @@ def main():
     print(f"Scanning {website_url} for flags matching pattern: {flag_type}")
     
     # Scan the main page
-    flags = scan_page(website_url, flag_type)
+    flags, page_source = scan_page(website_url, flag_type)
     if flags:
         print("Flags found in the main page:")
         for flag in flags:
             print(flag)
     else:
         print("No flags found in the main page.")
+    
+    # Optionally, print or save the page source
+    # To print the page source (optional, for debugging purposes):
+    # print("\nPage Source:\n", page_source)
 
     # Scan robots.txt
-    flags = scan_robots_txt(website_url, flag_type)
+    flags, _ = scan_robots_txt(website_url, flag_type)
     if flags:
         print("Flags found in robots.txt:")
         for flag in flags:
