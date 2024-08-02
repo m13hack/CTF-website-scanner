@@ -1,67 +1,42 @@
-from selenium import webdriver
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.common.by import By
-from selenium.webdriver.chrome.options import Options
+import requests
+from bs4 import BeautifulSoup
 import re
-import time
+from urllib.parse import urljoin
 
-def scan_page(url, flag_pattern):
-    """Fetch the fully rendered page source and search for flags using the provided pattern."""
-    # Setup Chrome options
-    chrome_options = Options()
-    chrome_options.add_argument("--headless")  # Run in headless mode (no GUI)
-    
-    # Specify the path to chromedriver
-    service = Service('/path/to/chromedriver')  # Update with your chromedriver path
-    driver = webdriver.Chrome(service=service, options=chrome_options)
-    
-    try:
-        driver.get(url)
-        time.sleep(5)  # Wait for JavaScript to load (adjust as needed)
-        page_source = driver.page_source  # Get the rendered page source
-        flags = re.findall(flag_pattern, page_source)
-        return flags, page_source
-    except Exception as e:
-        print(f"Error fetching {url}: {e}")
-        return [], ""
-    finally:
-        driver.quit()
+def scan_website(url, flag_formats, max_pages=5):
+    found_flags = []
+    visited_pages = set()
 
-def scan_robots_txt(url, flag_pattern):
-    """Fetch the robots.txt file and search for flags using the provided pattern."""
-    if not url.endswith('/'):
-        url += '/'
-    robots_url = url + 'robots.txt'
-    return scan_page(robots_url, flag_pattern)
+    def scan_page(page_url):
+        if page_url in visited_pages:
+            return
+        visited_pages.add(page_url)
 
-def main():
-    # Get user inputs
-    website_url = input("Enter the website URL: ").strip()
-    flag_type = input("Enter the flag type pattern (e.g., CTF{[^}]+}): ").strip()
-    
-    print(f"Scanning {website_url} for flags matching pattern: {flag_type}")
-    
-    # Scan the main page
-    flags, page_source = scan_page(website_url, flag_type)
-    if flags:
-        print("Flags found in the main page:")
-        for flag in flags:
-            print(flag)
-    else:
-        print("No flags found in the main page.")
-    
-    # Optionally, print or save the page source
-    # To print the page source (optional, for debugging purposes):
-    # print("\nPage Source:\n", page_source)
+        try:
+            response = requests.get(page_url)
+            soup = BeautifulSoup(response.text, 'html.parser')
 
-    # Scan robots.txt
-    flags, _ = scan_robots_txt(website_url, flag_type)
-    if flags:
-        print("Flags found in robots.txt:")
-        for flag in flags:
-            print(flag)
-    else:
-        print("No flags found in robots.txt.")
+            for flag_format in flag_formats:
+                flags = re.findall(flag_format, soup.text)
+                if flags:
+                    found_flags.extend(flags)
 
-if __name__ == "__main__":
-    main()
+            # Find all links on the page and scan them recursively
+            for link in soup.find_all('a'):
+                link_url = urljoin(page_url, link.get('href'))
+                if link_url.startswith(url) and len(visited_pages) < max_pages:
+                    scan_page(link_url)
+
+        except Exception as e:
+            print(f"Error scanning {page_url}: {str(e)}")
+
+    scan_page(url)
+    return found_flags
+
+# Example usage
+url = "http://example.com"
+flag_formats = [r"FLAG{.*}", r"flag{.*}", r"CTF{.*}"]
+found_flags = scan_website(url, flag_formats)
+print("Found flags:")
+for flag in found_flags:
+    print(flag)
