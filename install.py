@@ -1,37 +1,31 @@
-#!/bin/bash
+import os
+import shutil
 
 # Set the script name and version
-SCRIPT_NAME="ctf-flag-scanner"
-VERSION="1.0"
+SCRIPT_NAME = "ctf-flag-scanner"
+VERSION = "1.0"
 
 # Set the installation directory
-INSTALL_DIR="/usr/local/bin"
+INSTALL_DIR = "/usr/local/bin"
 
 # Check if the script is already installed
-if [ -f "$INSTALL_DIR/$SCRIPT_NAME" ]; then
-  echo "Error: $SCRIPT_NAME is already installed."
-  exit 1
-fi
+if os.path.isfile(os.path.join(INSTALL_DIR, SCRIPT_NAME)):
+    print("Error: {} is already installed.".format(SCRIPT_NAME))
+    exit(1)
 
 # Create the installation directory if it doesn't exist
-if [ ! -d "$INSTALL_DIR" ]; then
-  mkdir -p "$INSTALL_DIR"
-fi
+if not os.path.exists(INSTALL_DIR):
+    os.makedirs(INSTALL_DIR)
 
 # Copy the script to the installation directory
-cp ctf-flag-scanner.py "$INSTALL_DIR/$SCRIPT_NAME"
+shutil.copy("ctf-flag-scanner.py", os.path.join(INSTALL_DIR, SCRIPT_NAME))
 
 # Make the script executable
-chmod +x "$INSTALL_DIR/$SCRIPT_NAME"
-
-# Add a shebang line to the script
-echo "#!/usr/bin/env python3" > "$INSTALL_DIR/$SCRIPT_NAME"
-
-# Append the script contents to the file
-cat ctf-flag-scanner.py >> "$INSTALL_DIR/$SCRIPT_NAME"
+os.chmod(os.path.join(INSTALL_DIR, SCRIPT_NAME), 0o755)
 
 # Print a success message
-echo "Installation complete! You can now run $SCRIPT_NAME from anywhere."
+print("Installation complete! You can now run {} from anywhere.".format(SCRIPT_NAME))
 
 # Add a git hook to run the script
-git config --global alias.ctf-flag-scanner '!'"$INSTALL_DIR/$SCRIPT_NAME"
+with open(os.path.expanduser("~/.gitconfig"), "a") as f:
+    f.write("[alias]\nctf-flag-scanner =!{} {}\n".format(INSTALL_DIR, SCRIPT_NAME))
