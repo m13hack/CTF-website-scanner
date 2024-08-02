@@ -6,7 +6,7 @@ SCRIPT_NAME = "ctf-flag-scanner"
 VERSION = "1.0"
 
 # Set the installation directory
-INSTALL_DIR = "/usr/local/bin"
+INSTALL_DIR = os.path.expanduser("~")
 
 # Check if the script is already installed
 if os.path.isfile(os.path.join(INSTALL_DIR, SCRIPT_NAME)):
