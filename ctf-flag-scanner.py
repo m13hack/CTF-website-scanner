@@ -1,32 +1,30 @@
-import requests
-import re
+# vuln_app.py
+import os
+import sqlite3
+import hashlib
 
-def get_flag(url, flag_format):
-    try:
-        response = requests.get(url)
-        response.raise_for_status()  # Raise an exception for bad status codes
-    except requests.exceptions.RequestException as e:
-        print(f"Error: {e}")
-        return None
+# 1. Hardcoded secret
+API_KEY = "1234567890abcdef"  
 
-    pattern = re.compile(flag_format)
-    match = pattern.search(response.text)
+def insecure_login(user, password):
+    # 2. SQL Injection (string concatenation instead of parameterized queries)
+    conn = sqlite3.connect("users.db")
+    cursor = conn.cursor()
+    query = f"SELECT * FROM users WHERE username = '{user}' AND password = '{password}'"
+    cursor.execute(query)
+    result = cursor.fetchall()
+    conn.close()
+    return result
 
-    if match:
-        return match.group(0)
-    else:
-        return None
+def weak_hash(password):
+    # 3. Weak hash function (MD5)
+    return hashlib.md5(password.encode()).hexdigest()
 
-def main():
-    url = input("Enter the URL to scan: ")
-    flag_format = input("Enter the flag format (e.g. FLAG-[a-zA-Z0-9]{5}): ")
-
-    flag = get_flag(url, flag_format)
-
-    if flag:
-        print(f"Flag found: {flag}")
-    else:
-        print("Flag not found")
+def run_command(cmd):
+    # 4. Command Injection
+    os.system(cmd)
 
 if __name__ == "__main__":
-    main()
+    print("Insecure login test:", insecure_login("admin", "password"))
+    print("Weak hash of 'admin':", weak_hash("admin"))
+    run_command("echo Hello; rm -rf /")  # dangerous!
